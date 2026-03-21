@@ -49,8 +49,21 @@ export function calculateScore(property, weights = DEFAULT_WEIGHTS) {
   let totalWeight = 0;
   let totalScore = 0;
 
+  // Ensure weights are always numbers (guards against string values from DB)
+  const w = {
+    dogs_allowed: Number(weights?.dogs_allowed) || 15,
+    backyard:     Number(weights?.backyard)     || 15,
+    garage:       Number(weights?.garage)       || 10,
+    bedrooms:     Number(weights?.bedrooms)     || 10,
+    lot_size:     Number(weights?.lot_size)     || 15,
+    property_type:Number(weights?.property_type)|| 10,
+    privacy_proxy:Number(weights?.privacy_proxy)|| 10,
+    value_score:  Number(weights?.value_score)  || 10,
+    density:      Number(weights?.density)      || 5,
+  };
+
   // --- Dogs Allowed ---
-  const dogsWeight = weights.dogs_allowed || 15;
+  const dogsWeight = w.dogs_allowed;
   totalWeight += dogsWeight;
   if (property.dogs_allowed === true || property.dogs_policy === 'allowed') {
     breakdown.dogs_allowed = { score: dogsWeight, max: dogsWeight, label: 'Dogs allowed (confirmed)' };
@@ -69,7 +82,7 @@ export function calculateScore(property, weights = DEFAULT_WEIGHTS) {
   }
 
   // --- Backyard ---
-  const backyardWeight = weights.backyard || 15;
+  const backyardWeight = w.backyard;
   totalWeight += backyardWeight;
   if (property.has_backyard === true) {
     breakdown.backyard = { score: backyardWeight, max: backyardWeight, label: 'Backyard confirmed' };
@@ -85,7 +98,7 @@ export function calculateScore(property, weights = DEFAULT_WEIGHTS) {
   }
 
   // --- Garage ---
-  const garageWeight = weights.garage || 10;
+  const garageWeight = w.garage;
   totalWeight += garageWeight;
   if (property.has_garage === true) {
     const spaces = property.garage_spaces || 1;
@@ -102,7 +115,7 @@ export function calculateScore(property, weights = DEFAULT_WEIGHTS) {
   }
 
   // --- Bedrooms ---
-  const bedsWeight = weights.bedrooms || 10;
+  const bedsWeight = w.bedrooms;
   totalWeight += bedsWeight;
   const beds = property.bedrooms || 0;
   if (beds >= 5) {
@@ -121,7 +134,7 @@ export function calculateScore(property, weights = DEFAULT_WEIGHTS) {
   }
 
   // --- Lot Size ---
-  const lotWeight = weights.lot_size || 15;
+  const lotWeight = w.lot_size;
   totalWeight += lotWeight;
   const lotAcres = property.lot_size_acres || (property.lot_size_sqft ? property.lot_size_sqft / 43560 : null);
   if (lotAcres != null) {
@@ -145,7 +158,7 @@ export function calculateScore(property, weights = DEFAULT_WEIGHTS) {
   }
 
   // --- Property Type ---
-  const typeWeight = weights.property_type || 10;
+  const typeWeight = w.property_type;
   totalWeight += typeWeight;
   const typeScores = {
     single_family: 1.0,
@@ -165,7 +178,7 @@ export function calculateScore(property, weights = DEFAULT_WEIGHTS) {
   if (!property.property_type) inferred.push('property_type');
 
   // --- Privacy Proxy ---
-  const privacyWeight = weights.privacy_proxy || 10;
+  const privacyWeight = w.privacy_proxy;
   totalWeight += privacyWeight;
   const privacyScore = calculatePrivacyScore(property, privacyWeight);
   breakdown.privacy_proxy = { score: privacyScore.score, max: privacyWeight, label: privacyScore.label };
@@ -173,14 +186,14 @@ export function calculateScore(property, weights = DEFAULT_WEIGHTS) {
   if (privacyScore.inferred) inferred.push('privacy');
 
   // --- Value Score ---
-  const valueWeight = weights.value_score || 10;
+  const valueWeight = w.value_score;
   totalWeight += valueWeight;
   const valueScore = calculateValueScore(property, valueWeight);
   breakdown.value_score = { score: valueScore.score, max: valueWeight, label: valueScore.label };
   totalScore += valueScore.score;
 
   // --- Density ---
-  const densityWeight = weights.density || 5;
+  const densityWeight = w.density;
   totalWeight += densityWeight;
   const densityScore = calculateDensityScore(property, densityWeight);
   breakdown.density = { score: densityScore.score, max: densityWeight, label: densityScore.label };

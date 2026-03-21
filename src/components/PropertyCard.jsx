@@ -9,7 +9,8 @@ export default function PropertyCard({
   onToggleHidden,
   viewMode = 'grid',
 }) {
-  const scoreInfo = getScoreColor(property.match_score || 0);
+  const safeScore = isNaN(property.match_score) ? 0 : (property.match_score || 0);
+  const scoreInfo = getScoreColor(safeScore);
   const source = SOURCES[property.source] || SOURCES.manual;
   const isFavorite = userProperty?.is_favorite;
   const isHidden = userProperty?.is_hidden;
@@ -52,7 +53,7 @@ export default function PropertyCard({
         </div>
         <div className="list-actions">
           <div className="score-badge" style={{ backgroundColor: scoreInfo.color }}>
-            {property.match_score}
+            {safeScore}
           </div>
           <button
             className={`btn-icon-sm ${isFavorite ? 'active' : ''}`}
@@ -83,7 +84,7 @@ export default function PropertyCard({
         {/* Badges */}
         <div className="card-badges">
           <div className="score-badge" style={{ backgroundColor: scoreInfo.color }}>
-            {property.match_score}
+            {safeScore}
           </div>
           {property.is_price_drop && (
             <div className="badge price-drop-badge">Price Drop</div>
