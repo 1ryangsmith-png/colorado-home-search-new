@@ -203,23 +203,25 @@ async function syncRapidAPI() {
 
   for (const loc of cities) {
     try {
-      // Using realty-in-us API for-rent endpoint (Realtor.com data, licensed via RapidAPI)
-      const params = new URLSearchParams({
-        city: loc.city,
-        state_code: loc.state_code,
-        beds_min: '3',
-        limit: '50',
-        offset: '0',
-      });
-
+      // Using realty-in-us API — POST /properties/v3/list with JSON body
       const response = await fetch(
-        `https://realty-in-us.p.rapidapi.com/for-rent/v2/list?${params}`,
+        'https://realty-in-us.p.rapidapi.com/properties/v3/list',
         {
-          method: 'GET',
+          method: 'POST',
           headers: {
             'X-RapidAPI-Key': process.env.RAPIDAPI_KEY,
             'X-RapidAPI-Host': 'realty-in-us.p.rapidapi.com',
+            'Content-Type': 'application/json',
           },
+          body: JSON.stringify({
+            limit: 50,
+            offset: 0,
+            city: loc.city,
+            state_code: loc.state_code,
+            status: ['for_rent'],
+            beds: { min: 3 },
+            sort: { direction: 'desc', field: 'list_date' },
+          }),
         }
       );
 
@@ -229,13 +231,7 @@ async function syncRapidAPI() {
       }
 
       const data = await response.json();
-      // Support both v2 and v3 response shapes
-      const properties =
-        data?.data?.home_search?.results ||
-        data?.listings ||
-        data?.data?.results ||
-        data?.results ||
-        [];
+      const properties = data?.data?.home_search?.results || [];
 
       for (const prop of properties) {
         try {
