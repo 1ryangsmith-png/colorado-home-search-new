@@ -14,7 +14,8 @@ export default function PropertyDetail({
   const [notesChanged, setNotesChanged] = useState(false);
   const [activeImageTab, setActiveImageTab] = useState('gallery');
 
-  const scoreInfo = getScoreColor(property.match_score || 0);
+  const safeScore = isNaN(property.match_score) ? 0 : (property.match_score || 0);
+  const scoreInfo = getScoreColor(safeScore);
   const source = SOURCES[property.source] || SOURCES.manual;
   const isFavorite = userProperty?.is_favorite;
 
@@ -85,7 +86,7 @@ export default function PropertyDetail({
               )}
             </div>
             <div className="detail-score" style={{ backgroundColor: scoreInfo.color }}>
-              <span className="score-number">{property.match_score}</span>
+              <span className="score-number">{safeScore}</span>
               <span className="score-label">{scoreInfo.label}</span>
             </div>
           </div>
@@ -157,6 +158,63 @@ export default function PropertyDetail({
                   {PROPERTY_TYPES[property.property_type] || 'Property type unknown'}
                 </span>
               </div>
+            </div>
+          </div>
+
+          {/* Description */}
+          {property.description && (
+            <div className="detail-section">
+              <h3>Description</h3>
+              <p className="detail-description">{property.description}</p>
+            </div>
+          )}
+
+          {/* Additional Details */}
+          <div className="detail-section">
+            <h3>Property Details</h3>
+            <div className="detail-info-grid">
+              {property.property_type && (
+                <div className="info-row">
+                  <span className="info-label">Type</span>
+                  <span className="info-value">{PROPERTY_TYPES[property.property_type] || property.property_type}</span>
+                </div>
+              )}
+              {property.year_built && (
+                <div className="info-row">
+                  <span className="info-label">Year Built</span>
+                  <span className="info-value">{property.year_built}</span>
+                </div>
+              )}
+              {property.sqft && (
+                <div className="info-row">
+                  <span className="info-label">Square Feet</span>
+                  <span className="info-value">{Number(property.sqft).toLocaleString()} sqft</span>
+                </div>
+              )}
+              {property.lot_size_acres && (
+                <div className="info-row">
+                  <span className="info-label">Lot Size</span>
+                  <span className="info-value">{Number(property.lot_size_acres).toFixed(3)} acres ({property.lot_size_sqft ? Number(property.lot_size_sqft).toLocaleString() + ' sqft' : ''})</span>
+                </div>
+              )}
+              {property.garage_spaces && (
+                <div className="info-row">
+                  <span className="info-label">Garage</span>
+                  <span className="info-value">{property.garage_spaces}-car garage</span>
+                </div>
+              )}
+              {property.zip && (
+                <div className="info-row">
+                  <span className="info-label">ZIP Code</span>
+                  <span className="info-value">{property.zip}</span>
+                </div>
+              )}
+              {property.neighborhood && (
+                <div className="info-row">
+                  <span className="info-label">Neighborhood</span>
+                  <span className="info-value">{property.neighborhood}</span>
+                </div>
+              )}
             </div>
           </div>
 

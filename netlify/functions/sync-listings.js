@@ -257,11 +257,38 @@ async function syncRapidAPI() {
  * Normalize a RapidAPI/Realtor.com listing to our schema
  */
 function normalizeRapidAPIListing(prop, city) {
-  // Handle both v2 and v3 response shapes
-  const location = prop.location || prop.address || {};
-  const address = location.address || location || {};
-  const description = prop.description || prop.details || {};
-  const photos = prop.photos || prop.primary_photo ? [{ href: prop.primary_photo?.href }] : [];
+  const location = prop.location || {};
+  const address = location.address || {};
+  const description = prop.description || {};
+
+  // Fix: correctly extract photos array (operator precedence bug previously caused only 1 photo)
+  const photoArr = Array.isArray(prop.photos) && prop.photos.length > 0
+    ? prop.photos
+    : prop.primary_photo
+    ? [prop.primary_photo]
+    : [];
+
+  // Pull description text from multiple possible fields
+  const descriptionText = prop.description?.text
+    || prop.text
+    || (prop.tags?.length > 0 ? prop.tags.join(' · ') : null)
+    || null;
+
+  // Infer dog policy from tags
+  const tags = prop.tags || [];
+  const tagStr = tags.join(' ').toLowerCase();
+  let dogs_policy = 'unknown';
+  if (tagStr.includes('pet') || tagStr.includes('dog')) dogs_policy = 'allowed';
+  if (tagStr.includes('no pet') || tagStr.includes('no dog')) dogs_policy = 'not_allowed';
+
+  // Infer backyard/garage from tags and lot
+  const hasBackyard = tagStr.includes('yard') || tagStr.includes('backyard') || tagStr.includes('fenced')
+    ? true
+    : (description.lot_sqft && description.lot_sqft > 3000 ? true : null);
+
+  const hasGarage = description.garage > 0
+    ? true
+    : tagStr.includes('garage') ? true : null;
 
   return {
     address: `${address.line || ''}, ${address.city || city}, ${address.state_code || 'CO'} ${address.postal_code || ''}`.trim(),
@@ -269,30 +296,41 @@ function normalizeRapidAPIListing(prop, city) {
     state: 'CO',
     zip: address.postal_code,
     neighborhood: address.neighborhood_name,
-    latitude: location.address?.coordinate?.lat,
-    longitude: location.address?.coordinate?.lon,
+    latitude: address.coordinate?.lat,
+    longitude: address.coordinate?.lon,
     price: prop.list_price || description.rent,
     bedrooms: description.beds,
     bathrooms: description.baths,
     sqft: description.sqft,
     lot_size_sqft: description.lot_sqft,
-    lot_size_acres: description.lot_sqft ? description.lot_sqft / 43560 : null,
+    lot_size_acres: description.lot_sqft ? parseFloat((description.lot_sqft / 43560).toFixed(3)) : null,
     year_built: description.year_built,
     property_type: mapPropertyType(description.type),
-    dogs_policy: 'unknown',
-    has_backyard: description.lot_sqft && description.lot_sqft > 3000 ? true : null,
-    has_garage: description.garage ? true : null,
-    garage_spaces: description.garage,
-    images: photos.slice(0, 10).map((p) => ({
+    description: descriptionText,
+    dogs_allowed: dogs_policy === 'allowed',
+    dogs_policy,
+    has_backyard: hasBackyard,
+    has_garage: hasGarage,
+    garage_spaces: description.garage || null,
+    images: photoArr.slice(0, 15).map((p) => ({
       url: p.href,
       source: 'realtor.com',
     })),
-    thumbnail_url: photos[0]?.href,
+    thumbnail_url: photoArr[0]?.href || null,
     source: 'rapidapi_realtor',
-    source_url: prop.href ? `https://www.realtor.com${prop.href}` : null,
+    source_url: prop.permalink
+      ? `https://www.realtor.com/realestateandhomes-detail/${prop.permalink}`
+      : prop.href
+      ? `https://www.realtor.com${prop.href}`
+      : null,
     source_listing_id: prop.property_id,
     date_posted: prop.list_date ? new Date(prop.list_date).toISOString() : null,
-    raw_data: { property_id: prop.property_id, type: description.type },
+    raw_data: {
+      property_id: prop.property_id,
+      type: description.type,
+      tags: prop.tags || [],
+      photo_count: photoArr.length,
+    },
   };
 }
 
