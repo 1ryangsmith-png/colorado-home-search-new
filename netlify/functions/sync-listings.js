@@ -321,7 +321,7 @@ function normalizeRapidAPIListing(prop, city) {
     source_url: prop.permalink
       ? `https://www.realtor.com/realestateandhomes-detail/${prop.permalink}`
       : prop.href
-      ? `https://www.realtor.com${prop.href}`
+      ? (prop.href.startsWith('http') ? prop.href : `https://www.realtor.com${prop.href}`)
       : null,
     source_listing_id: prop.property_id,
     date_posted: prop.list_date ? new Date(prop.list_date).toISOString() : null,
