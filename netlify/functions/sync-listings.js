@@ -203,10 +203,19 @@ async function syncRapidAPI() {
 
   for (const loc of cities) {
     try {
-      // Using realty-in-us API (Realtor.com data, licensed via RapidAPI)
+      // Using realty-in-us API for-rent endpoint (Realtor.com data, licensed via RapidAPI)
+      const params = new URLSearchParams({
+        city: loc.city,
+        state_code: loc.state_code,
+        beds_min: '3',
+        limit: '50',
+        offset: '0',
+      });
+
       const response = await fetch(
-        `https://realty-in-us.p.rapidapi.com/properties/v3/list?city=${encodeURIComponent(loc.city)}&state_code=${loc.state_code}&status=for_rent&beds_min=3&type=single_family,townhomes&limit=50`,
+        `https://realty-in-us.p.rapidapi.com/for-rent/v2/list?${params}`,
         {
+          method: 'GET',
           headers: {
             'X-RapidAPI-Key': process.env.RAPIDAPI_KEY,
             'X-RapidAPI-Host': 'realty-in-us.p.rapidapi.com',
@@ -220,7 +229,13 @@ async function syncRapidAPI() {
       }
 
       const data = await response.json();
-      const properties = data?.data?.home_search?.results || [];
+      // Support both v2 and v3 response shapes
+      const properties =
+        data?.data?.home_search?.results ||
+        data?.listings ||
+        data?.data?.results ||
+        data?.results ||
+        [];
 
       for (const prop of properties) {
         try {
@@ -246,10 +261,11 @@ async function syncRapidAPI() {
  * Normalize a RapidAPI/Realtor.com listing to our schema
  */
 function normalizeRapidAPIListing(prop, city) {
-  const location = prop.location || {};
-  const address = location.address || {};
-  const description = prop.description || {};
-  const photos = prop.photos || [];
+  // Handle both v2 and v3 response shapes
+  const location = prop.location || prop.address || {};
+  const address = location.address || location || {};
+  const description = prop.description || prop.details || {};
+  const photos = prop.photos || prop.primary_photo ? [{ href: prop.primary_photo?.href }] : [];
 
   return {
     address: `${address.line || ''}, ${address.city || city}, ${address.state_code || 'CO'} ${address.postal_code || ''}`.trim(),
